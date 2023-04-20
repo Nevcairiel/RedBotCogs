@@ -81,7 +81,6 @@ class SteamWhitelist(commands.Cog, metaclass=CompositeMetaClass):
             if self.user_whitelisted_internal(member, allowed_roles):
                 steamid_whitelist.append(steam_id)
 
-        # todo: write whitelist out
         filename = await self.config.guild(guild).whitelist_file()
         filename_tmp = filename + ".tmp"
         try:
@@ -125,6 +124,7 @@ class SteamWhitelist(commands.Cog, metaclass=CompositeMetaClass):
             for role in roles:
                 message += ctx.guild.get_role(role).mention + "\n"
         
+        message += "\n"
         message += "Whitelisted Steam IDs:\n"
         async with self.config.guild(ctx.guild).whitelist() as whitelist:
             for id in whitelist:
@@ -189,6 +189,7 @@ class SteamWhitelist(commands.Cog, metaclass=CompositeMetaClass):
     async def sync_whitelist(self, ctx: commands.Context):
         """Re-sync the whitelist to disk"""
         await self.update_whitelist(ctx.guild)
+        await ctx.send("The whitelist was synced.", delete_after=4)
 
     @steamwhitelist.group(name = "set")
     @commands.is_owner()
