@@ -1,0 +1,8 @@
+{
+    "author" : ["Nevcairiel"],
+    "install_msg" : "Start using the Cog with !steamwhitelist",
+    "name" : "SteamWhitelist",
+    "short" : "Steam whitelist management, linked to discord",
+    "description" : "A simple Cog to manage a whitelist of steam IDs for a game server, based on Discord roles",
+    "end_user_data_statement" : "The Cog will save user SteamIDs, if they set them."
+}
