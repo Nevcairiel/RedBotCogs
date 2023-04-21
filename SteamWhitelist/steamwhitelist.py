@@ -49,7 +49,7 @@ class SteamWhitelist(commands.Cog, metaclass=CompositeMetaClass):
     async def user_whitelisted(self, user: discord.Member) -> bool:
         """Check if a user has a whitelisted role"""
         allowed_roles = await self.config.guild(user.guild).roles()
-        return self.user_whitelisted_internal(self, user, allowed_roles)
+        return self.user_whitelisted_internal(user, allowed_roles)
     
     def user_whitelisted_internal(self, user: discord.Member, allowed_roles) -> bool:
         """Check if a user has a whitelisted role"""
@@ -108,8 +108,8 @@ class SteamWhitelist(commands.Cog, metaclass=CompositeMetaClass):
                 await self.config.user(ctx.author).steam_id.set(steam_id)
                 await ctx.send(f"{ctx.author.mention}, your Steam ID was saved", delete_after=4)
 
-                if self.user_whitelisted(ctx.author):
-                    self.update_whitelist(ctx.guild)
+                if await self.user_whitelisted(ctx.author):
+                    await self.update_whitelist(ctx.guild)
             else:
                 await ctx.send(f"{ctx.author.mention}, the provided SteamID is invalid. Only SteamID64 is supported (76561...)", delete_after=4)
         else:
