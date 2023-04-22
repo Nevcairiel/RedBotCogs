@@ -194,7 +194,7 @@ class SteamWhitelist(commands.Cog, metaclass=CompositeMetaClass):
         else:
             await ctx.send("The SteamID was not found.", delete_after=4)
 
-    @steamwhitelist.command()
+    @steamwhitelist.command(name = "ban")
     @commands.admin()
     async def addban(self, ctx: commands.Context, steam_id: str):
         """Add a Steam ID to the ban list"""
@@ -217,7 +217,7 @@ class SteamWhitelist(commands.Cog, metaclass=CompositeMetaClass):
         await ctx.send("The SteamID has been added to the ban list.", delete_after=4)
         await self.update_whitelist(ctx.guild)
 
-    @steamwhitelist.command()
+    @steamwhitelist.command(name = "unban")
     @commands.admin()
     async def removeban(self, ctx: commands.Context, steam_id: str):
         """Remove a Steam ID from the ban list"""
