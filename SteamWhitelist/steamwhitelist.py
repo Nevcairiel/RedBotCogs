@@ -106,15 +106,17 @@ class SteamWhitelist(commands.Cog, metaclass=CompositeMetaClass):
         if steam_id:
             if self.validate_steamid(steam_id):
                 await self.config.user(ctx.author).steam_id.set(steam_id)
-                await ctx.send(f"{ctx.author.mention}, your Steam ID was saved", delete_after=4)
+                await ctx.send(f"{ctx.author.mention}, your Steam ID was saved", delete_after=6)
 
                 if await self.user_whitelisted(ctx.author):
                     await self.update_whitelist(ctx.guild)
             else:
-                await ctx.send(f"{ctx.author.mention}, the provided SteamID is invalid. Only SteamID64 is supported (76561...)", delete_after=4)
+                await ctx.send(f"{ctx.author.mention}, the provided SteamID is invalid. Only SteamID64 is supported (76561...)", delete_after=6)
         else:
             steam_id = await self.config.user(ctx.author).steam_id()
-            await ctx.send(f"{ctx.author.mention}, your saved Steam ID is: {steam_id}", delete_after=4)
+            await ctx.send(f"{ctx.author.mention}, your saved Steam ID is: {steam_id}", delete_after=6)
+        if ctx.guild:
+            await ctx.message.delete()
 
     @commands.group()
     @commands.admin()
