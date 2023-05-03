@@ -99,6 +99,21 @@ class SteamWhitelist(commands.Cog, metaclass=CompositeMetaClass):
         except Exception as e:
             log.error(e)
 
+    async def update_all_guilds_for_member(self, user: discord.User):
+        """Update all guilds a user is a member of"""
+        all_guilds = await self.config.all_guilds()
+        for g_id, settings in all_guilds.items():
+            guild = self.bot.get_guild(g_id)
+            if not guild:
+                continue
+
+            member = guild.get_member(user.id)
+            if not member:
+                continue
+
+            if self.user_whitelisted_internal(member, settings["roles"]):
+                await self.update_whitelist(guild)
+
     @commands.command(name="steamid")
     async def steamid(self, ctx: commands.Context, steam_id: str = ""):        
         """Manage your own SteamID for the Steam Whitelist"""
@@ -108,8 +123,11 @@ class SteamWhitelist(commands.Cog, metaclass=CompositeMetaClass):
                 await self.config.user(ctx.author).steam_id.set(steam_id)
                 await ctx.send(f"{ctx.author.mention}, your Steam ID was saved", delete_after=6)
 
-                if await self.user_whitelisted(ctx.author):
-                    await self.update_whitelist(ctx.guild)
+                if ctx.guild:
+                    if await self.user_whitelisted(ctx.author):
+                        await self.update_whitelist(ctx.guild)
+                else:
+                    await self.update_all_guilds_for_member(ctx.author)
             else:
                 await ctx.send(f"{ctx.author.mention}, the provided SteamID is invalid. Only SteamID64 is supported (76561...)", delete_after=6)
         else:
