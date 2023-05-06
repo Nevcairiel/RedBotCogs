@@ -1,4 +1,4 @@
 from .steamwhitelist import SteamWhitelist
 
-def setup(bot):
-    bot.add_cog(SteamWhitelist(bot))
+async def setup(bot):
+    await bot.add_cog(SteamWhitelist(bot))
