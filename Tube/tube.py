@@ -399,7 +399,6 @@ class Tube(commands.Cog):
         fetched = {}
         cache_size = await self.conf.cache_size()
         for guild in self.bot.guilds:
-            log.info(f"Checking for new videos in guild {guild.name}...")
             update = await self._get_new_videos(guild, fetched)
             if not update:
                 continue
