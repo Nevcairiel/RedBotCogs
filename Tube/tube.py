@@ -4,6 +4,7 @@ import hashlib
 import logging
 import re
 import time
+from random import randint
 from typing import Optional
 
 import aiohttp
@@ -384,8 +385,9 @@ class Tube(commands.Cog):
     async def get_feed(self, channel):
         """Fetch data from a feed"""
         async with aiohttp.ClientSession() as session:
+            token = randint(100000,999999)
             res = await self.fetch(
-                session, f"https://www.youtube.com/feeds/videos.xml?channel_id={channel}"
+                session, f"https://www.youtube.com/feeds/videos.xml?channel_id={channel}&v={token}"
             )
         return res
 
