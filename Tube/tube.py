@@ -87,9 +87,14 @@ class Tube(commands.Cog):
             return
         if not channelDiscord:
             channelDiscord = ctx.channel
+        playlistId = self.get_upload_playlist(channelDiscord, api_key)
+        if not playlistId:
+            await ctx.send("Could not determine upload playlist ID")
+            return
         subs = await self.conf.guild(ctx.guild).subscriptions()
         newSub = {
             "id": channelYouTube,
+            "playlistId": playlistId,
             "channel": {"name": channelDiscord.name, "id": channelDiscord.id},
             "publish": publish,
         }
@@ -299,9 +304,12 @@ class Tube(commands.Cog):
             if not channel.permissions_for(guild.me).send_messages:
                 log.warning(f"Not allowed to post subscription to: {channel_id}")
                 continue
+            if not ("playlistId" in sub and sub["playlistId"]):
+                log.warning(f"No playlist id for channel {sub['id']}")
+                continue
             if not sub["id"] in cache.keys():
                 try:
-                    cache[sub["id"]] = self.get_feed(sub["id"], api_key)
+                    cache[sub["id"]] = self.get_feed(sub["playlistId"], api_key)
                 except Exception as e:
                     log.exception(f"Error parsing feed for {sub.get('name', '')} ({sub['id']})")
                     continue
@@ -311,7 +319,7 @@ class Tube(commands.Cog):
                 if not sub.get("name"):
                     altered = True
                     sub["name"] = html.unescape(entry["snippet"]["channelTitle"])
-                video_id = entry["id"]["videoId"]
+                video_id = entry["snippet"]["resourceId"]["videoId"]
                 if (published > last_video_time and not video_id in history) or (
                     demo and published > last_video_time - datetime.timedelta(seconds=1)
                 ):
@@ -380,9 +388,34 @@ class Tube(commands.Cog):
         await self.conf.cache_size.set(size)
         await ctx.send(f"Cache size set to {await self.conf.cache_size()}")
 
-    def get_feed(self, channel, api_key):
+    def get_feed(self, playlist, api_key):
         youtube = googleapiclient.discovery.build('youtube', 'v3', developerKey=api_key, cache_discovery=False)
-        return youtube.search().list(part='id,snippet', channelId=channel, order='date', type='video', maxResults=1).execute()
+        return youtube.playlistItems().list(part='id,snippet', playlistId=playlist, maxResults=1).execute()
+
+    def get_upload_playlist(self, channel, api_key):
+        youtube = googleapiclient.discovery.build('youtube', 'v3', developerKey=api_key, cache_discovery=False)
+        try:
+            channelInfo = youtube.channels().list(part="id,contentDetails", id=channel).execute()
+            playlistId = channelInfo["items"][0]["contentDetails"]["relatedPlaylists"]["uploads"]
+        except Exception:
+            log.exception("Unable to get playlist id for channel")
+
+        return playlistId
+
+    async def migrate_feeds(self):
+         for guild in self.bot.guilds:
+            api_key = await self.conf.guild(guild).api_key()
+            if not api_key:
+                continue
+
+            subs = await self.conf.guild(guild).subscriptions()
+            for i, sub in enumerate(subs):
+                if not ("playlistId" in sub and sub["playlistId"]):
+                    playlistId = self.get_upload_playlist(sub["id"], api_key)
+                    if playlistId:
+                        subs[i]["playlistId"] = playlistId
+
+            await self.conf.guild(guild).subscriptions.set(subs)
 
     async def cog_unload(self):
         self.background_get_new_videos.cancel()
@@ -408,3 +441,4 @@ class Tube(commands.Cog):
         await self.bot.wait_until_red_ready()
         interval = await self.conf.interval()
         self.background_get_new_videos.change_interval(seconds=interval)
+        await self.migrate_feeds()
