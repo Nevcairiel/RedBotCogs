@@ -1,12 +1,13 @@
 {
-    "author" : ["CrunchBangDev", "YamiKaitou#8975"],
+    "author" : ["nevcairiel", "CrunchBangDev", "YamiKaitou#8975"],
     "install_msg" : "You've just installed the Tube cog!",
     "name" : "Tube",
     "short" : "Subscribe to channels on the 'tube",
     "description" : "Posts in a channel every time a new video is added to a YouTube channel.",
     "required_cogs": {},
     "requirements": [
-        "feedparser"
+        "feedparser",
+        "google-api-python-client"
     ],
     "min_bot_version": "3.5.0",
     "tags": [],

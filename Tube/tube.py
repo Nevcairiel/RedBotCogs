@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 import datetime
+import dateutil.parser
 import hashlib
+import html
 import logging
 import re
 import time
@@ -9,7 +11,7 @@ from typing import Optional
 
 import aiohttp
 import discord
-import feedparser
+import googleapiclient.discovery
 from discord.ext import tasks
 from redbot.core import Config, bot, checks, commands
 from redbot.core.utils.chat_formatting import pagify
@@ -38,13 +40,22 @@ class Tube(commands.Cog):
     def __init__(self, bot: bot.Red):
         self.bot = bot
         self.conf = Config.get_conf(self, identifier=UNIQUE_ID, force_registration=True)
-        self.conf.register_guild(subscriptions=[], cache=[])
+        self.conf.register_guild(subscriptions=[], cache=[], api_key="")
         self.conf.register_global(interval=300, cache_size=500)
         self.background_get_new_videos.start()
 
     @commands.group()
     async def tube(self, ctx: commands.Context):
         """Post when new videos are added to a YouTube channel"""
+
+    @checks.admin_or_permissions(manage_guild=True)
+    @commands.guild_only()
+    @tube.command()
+    async def setapikey(self, ctx: commands.Context, api_key: str):
+         """Set the YouTube API key for this cog."""
+         await self.conf.guild(ctx.guild).api_key.set(api_key)
+         await ctx.message.delete()
+         await ctx.send("YouTube API key set successfully!")
 
     @checks.admin_or_permissions(manage_guild=True)
     @commands.guild_only()
@@ -70,6 +81,10 @@ class Tube(commands.Cog):
 
         Setting the `publish` flag will cause new videos to be published to the specified channel. Using this on non-announcement channels may result in errors.
         """
+        api_key = await self.conf.guild(ctx.guild).api_key()
+        if not api_key:
+            await ctx.send("YouTube API key not set!")
+            return
         if not channelDiscord:
             channelDiscord = ctx.channel
         subs = await self.conf.guild(ctx.guild).subscriptions()
@@ -83,18 +98,12 @@ class Tube(commands.Cog):
             if sub["uid"] == newSub["uid"]:
                 await ctx.send("This subscription already exists!")
                 return
-        feed = feedparser.parse(await self.get_feed(newSub["id"]))
-        last_video = {}
-        for entry in feed["entries"]:
-            if not last_video or entry["published_parsed"] > last_video["published_parsed"]:
-                last_video = entry
-        if last_video and last_video.get("published"):
-            newSub["previous"] = last_video["published"]
-        try:
-            newSub["name"] = feed["feed"]["title"]
-        except KeyError:
-            await ctx.send(f"Error getting channel feed title. Make sure the ID is correct.")
-            return
+        youtube = googleapiclient.discovery.build('youtube', 'v3', developerKey=api_key, cache_discovery=False)
+        feed = youtube.search().list(part='id,snippet', channelId=newSub["id"], order='date', type='video', maxResults=10).execute()
+        last_video = feed["items"][0]
+        if last_video and last_video["snippet"]["publishedAt"]:
+            newSub["previous"] =  dateutil.parser.isoparse(last_video["snippet"]["publishedAt"])
+            newSub["name"] = html.unescape(last_video["snippet"]["channelTitle"])
         subs.append(newSub)
         await self.conf.guild(ctx.guild).subscriptions.set(subs)
         await ctx.send(f"Subscription added: {newSub}")
@@ -272,6 +281,10 @@ class Tube(commands.Cog):
         try:
             subs = await self.conf.guild(guild).subscriptions()
             history = await self.conf.guild(guild).cache()
+            api_key = await self.conf.guild(guild).api_key()
+            if not api_key:
+                log.warning(f"YouTube API key not set")
+                return
         except:
             return
         new_history = []
@@ -282,53 +295,54 @@ class Tube(commands.Cog):
             channel = self.bot.get_channel(int(channel_id))
             if not channel:
                 if not self.has_warned_about_invalid_channels:
-                    log.warn(f"Invalid channel in subscription: {channel_id}")
+                    log.warning(f"Invalid channel in subscription: {channel_id}")
                 continue
             if not channel.permissions_for(guild.me).send_messages:
-                log.warn(f"Not allowed to post subscription to: {channel_id}")
+                log.warning(f"Not allowed to post subscription to: {channel_id}")
                 continue
             if not sub["id"] in cache.keys():
                 try:
-                    cache[sub["id"]] = feedparser.parse(await self.get_feed(sub["id"]))
+                    youtube = googleapiclient.discovery.build('youtube', 'v3', developerKey=api_key, cache_discovery=False)
+                    cache[sub["id"]] = youtube.search().list(
+                        part='id,snippet',
+                        channelId=sub["id"],
+                        order='date',
+                        type='video',
+                        maxResults=10
+                    ).execute()
                 except Exception as e:
                     log.exception(f"Error parsing feed for {sub.get('name', '')} ({sub['id']})")
                     continue
-            last_video_time = datetime.datetime.fromtimestamp(
-                time.mktime(
-                    time.strptime(
-                        sub.get("previous", "1970-01-01T00:00:00+00:00"), "%Y-%m-%dT%H:%M:%S%z"
-                    )
-                )
-            )
-            for entry in cache[sub["id"]]["entries"][::-1]:
-                published = datetime.datetime.fromtimestamp(
-                    time.mktime(entry.get("published_parsed", TIME_TUPLE))
-                )
+            last_video_time = dateutil.parser.isoparse(sub.get("previous", "1970-01-01T00:00:00+00:00"))
+            for entry in cache[sub["id"]]["items"]:
+                published = dateutil.parser.isoparse(entry["snippet"]["publishedAt"])
                 if not sub.get("name"):
                     altered = True
-                    sub["name"] = entry["author"]
-                if (published > last_video_time and not entry["yt_videoid"] in history) or (
+                    sub["name"] = html.unescape(entry["snippet"]["channelTitle"])
+                video_id = entry["id"]["videoId"]
+                if (published > last_video_time and not video_id in history) or (
                     demo and published > last_video_time - datetime.timedelta(seconds=1)
                 ):
+                    video_link = f"https://www.youtube.com/watch?v={video_id}"
                     altered = True
-                    subs[i]["previous"] = entry["published"]
-                    new_history.append(entry["yt_videoid"])
+                    subs[i]["previous"] = entry["snippet"]["publishedAt"]
+                    new_history.append(video_id)
                     # Build custom description if one is set
                     custom = sub.get("custom", False)
                     if custom:
                         for token in TOKENIZER.split(custom):
                             if token.startswith("%") and token.endswith("%"):
-                                custom = custom.replace(token, entry.get(token[1:-1]))
-                        description = f"{custom}\n{entry['link']}"
+                                custom = custom.replace(token, html.unescape(entry["snippet"].get(token[1:-1])))
+                        description = f"{custom}\n{video_link}"
                     # Default descriptions
                     else:
                         if channel.permissions_for(guild.me).embed_links:
                             # Let the embed provide necessary info
-                            description = entry["link"]
+                            description = video_link
                         else:
                             description = (
-                                f"New video from *{entry['author'][:500]}*:"
-                                f"\n**{entry['title'][:500]}**\n{entry['link']}"
+                                f"New video from *{html.unescape(entry['snippet']['channelTitle'][:500])}*:"
+                                f"\n**{html.unescape(entry['snippet']['title'][:500])}**\n{video_link}"
                             )
 
                     mention_id = sub.get("mention", False)
@@ -373,23 +387,6 @@ class Tube(commands.Cog):
         Default is 500"""
         await self.conf.cache_size.set(size)
         await ctx.send(f"Cache size set to {await self.conf.cache_size()}")
-
-    async def fetch(self, session, url):
-        try:
-            async with session.get(url) as response:
-                return await response.read()
-        except aiohttp.client_exceptions.ClientConnectionError as e:
-            log.exception(f"Fetch failed for url {url}: ", exc_info=e)
-            return None
-
-    async def get_feed(self, channel):
-        """Fetch data from a feed"""
-        async with aiohttp.ClientSession() as session:
-            token = randint(100000,999999)
-            res = await self.fetch(
-                session, f"https://www.youtube.com/feeds/videos.xml?channel_id={channel}&v={token}"
-            )
-        return res
 
     async def cog_unload(self):
         self.background_get_new_videos.cancel()
