@@ -98,8 +98,7 @@ class Tube(commands.Cog):
             if sub["uid"] == newSub["uid"]:
                 await ctx.send("This subscription already exists!")
                 return
-        youtube = googleapiclient.discovery.build('youtube', 'v3', developerKey=api_key, cache_discovery=False)
-        feed = youtube.search().list(part='id,snippet', channelId=newSub["id"], order='date', type='video', maxResults=10).execute()
+        feed = self.get_feed(newSub["id"], api_key)
         last_video = feed["items"][0]
         if last_video and last_video["snippet"]["publishedAt"]:
             newSub["previous"] =  dateutil.parser.isoparse(last_video["snippet"]["publishedAt"])
@@ -302,14 +301,7 @@ class Tube(commands.Cog):
                 continue
             if not sub["id"] in cache.keys():
                 try:
-                    youtube = googleapiclient.discovery.build('youtube', 'v3', developerKey=api_key, cache_discovery=False)
-                    cache[sub["id"]] = youtube.search().list(
-                        part='id,snippet',
-                        channelId=sub["id"],
-                        order='date',
-                        type='video',
-                        maxResults=10
-                    ).execute()
+                    cache[sub["id"]] = self.get_feed(sub["id"], api_key)
                 except Exception as e:
                     log.exception(f"Error parsing feed for {sub.get('name', '')} ({sub['id']})")
                     continue
@@ -387,6 +379,10 @@ class Tube(commands.Cog):
         Default is 500"""
         await self.conf.cache_size.set(size)
         await ctx.send(f"Cache size set to {await self.conf.cache_size()}")
+
+    def get_feed(self, channel, api_key):
+        youtube = googleapiclient.discovery.build('youtube', 'v3', developerKey=api_key, cache_discovery=False)
+        return youtube.search().list(part='id,snippet', channelId=channel, order='date', type='video', maxResults=1).execute()
 
     async def cog_unload(self):
         self.background_get_new_videos.cancel()
