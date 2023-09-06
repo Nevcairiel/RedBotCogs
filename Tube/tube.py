@@ -87,7 +87,7 @@ class Tube(commands.Cog):
             return
         if not channelDiscord:
             channelDiscord = ctx.channel
-        playlistId = self.get_upload_playlist(channelDiscord, api_key)
+        playlistId = self.get_upload_playlist(channelYouTube, api_key)
         if not playlistId:
             await ctx.send("Could not determine upload playlist ID")
             return
