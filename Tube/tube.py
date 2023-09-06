@@ -249,7 +249,7 @@ class Tube(commands.Cog):
     @tube.command(name="update")
     async def get_new_videos(self, ctx: commands.Context):
         """Update feeds and post new videos"""
-        # await ctx.send(f"Updating subscriptions for {ctx.message.guild}")
+        await ctx.send(f"Updating subscriptions for {ctx.message.guild}")
         await self._get_new_videos(ctx.message.guild, ctx=ctx)
 
     @checks.admin_or_permissions(manage_guild=True)
