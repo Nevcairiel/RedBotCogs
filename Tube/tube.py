@@ -397,10 +397,10 @@ class Tube(commands.Cog):
         try:
             channelInfo = youtube.channels().list(part="id,contentDetails", id=channel).execute()
             playlistId = channelInfo["items"][0]["contentDetails"]["relatedPlaylists"]["uploads"]
+            return playlistId
         except Exception:
             log.exception("Unable to get playlist id for channel")
-
-        return playlistId
+            return None
 
     async def migrate_feeds(self):
          for guild in self.bot.guilds:
@@ -439,6 +439,6 @@ class Tube(commands.Cog):
     @background_get_new_videos.before_loop
     async def wait_for_red(self):
         await self.bot.wait_until_red_ready()
+        await self.migrate_feeds()
         interval = await self.conf.interval()
         self.background_get_new_videos.change_interval(seconds=interval)
-        await self.migrate_feeds()
