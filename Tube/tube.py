@@ -396,6 +396,9 @@ class Tube(commands.Cog):
         fetched = {}
         cache_size = await self.conf.cache_size()
         for guild in self.bot.guilds:
+            api_key = await self.conf.guild(guild).api_key()
+            if not api_key:
+                continue
             update = await self._get_new_videos(guild, fetched)
             if not update:
                 continue
