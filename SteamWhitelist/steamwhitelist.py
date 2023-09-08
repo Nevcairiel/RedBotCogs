@@ -1,11 +1,14 @@
+import asyncio
 from abc import ABC
-from typing import Literal
+from typing import Literal, Optional, Dict
 
 import discord
 import logging
 import os
+from discord.ext.commands import Converter, BadArgument
 from redbot.core import Config
-from redbot.core import commands
+from redbot.core import commands, app_commands
+from redbot.core.utils.chat_formatting import humanize_list
 
 log = logging.getLogger("nevcairiel.SteamWhitelist")
 
@@ -16,6 +19,56 @@ class CompositeMetaClass(type(commands.Cog), type(ABC)):
     """
 
     pass
+
+class ButtonStyleConverter(Converter):
+    async def convert(self, ctx: commands.Context, argument: str) -> discord.ButtonStyle:
+        available_styles = [
+            i for i in dir(discord.ButtonStyle) if not i.startswith("_") and i != "try_value"
+        ]
+        if argument.lower() in available_styles:
+            return getattr(discord.ButtonStyle, argument.lower())
+        else:
+            raise BadArgument(
+                _("`{argument}` is not an available Style. Choose one from {styles}").format(
+                    argument=argument, styles=humanize_list(available_styles)
+                )
+            )
+
+class SteamIDEntry(discord.ui.Modal, title='Steam ID for Zebra Monkeys Community'):
+    def __init__(self, steamWhitelist):
+        super().__init__()
+        self.steamWhitelist = steamWhitelist
+
+    steamid = discord.ui.TextInput(
+        label='Steam ID (in SteamID64 format)',
+        placeholder='76561....',
+    )
+
+    async def on_submit(self, interaction: discord.Interaction):
+        if await self.steamWhitelist.set_steamid(self.steamid.value, interaction.user, interaction.guild):
+            await interaction.response.send_message(f"Your Steam ID was saved as: {self.steamid.value}", ephemeral=True)
+        else:
+            await interaction.response.send_message("The provided SteamID is invalid. Only SteamID64 is supported (76561...)", ephemeral=True)
+
+    async def on_error(self, interaction: discord.Interaction, error: Exception) -> None:
+        await interaction.response.send_message("Oops! Something went wrong.", ephemeral=True)
+        log.exception("Error saving SteamID")
+
+class SteamIDEntryButton(discord.ui.Button):
+    def __init__(
+        self,
+        steamWhitelist,
+        custom_id: str,
+        style: discord.ButtonStyle = discord.ButtonStyle.secondary,
+        label: Optional[str] = None,
+        emoji: Optional[str] = None,
+    ):
+        super().__init__(style=style, label=label, emoji=emoji, custom_id=custom_id)
+        self.steamWhitelist = steamWhitelist
+
+    async def callback(self, interaction: discord.Interaction):
+        modal = SteamIDEntry(self.steamWhitelist)
+        await interaction.response.send_modal(modal)
 
 class SteamWhitelist(commands.Cog, metaclass=CompositeMetaClass):
     """Steam Whitelist <> Discord bridge"""
@@ -32,12 +85,69 @@ class SteamWhitelist(commands.Cog, metaclass=CompositeMetaClass):
             "roles": [],
             "whitelist": [],
             "bans": [],
+            "buttons": [],
         }
         self.config.register_guild(**default_guild)
         
         # default per-user settings
         default_user = {}
         self.config.register_user(**default_user)
+
+        # view tracking
+        self._ready: asyncio.Event = asyncio.Event()
+        self.views: Dict[int, Dict[str, discord.ui.View]] = {}
+
+    async def cog_load(self) -> None:
+        loop = asyncio.get_running_loop()
+        loop.create_task(self.load_views())
+
+    async def cog_unload(self):
+        for views in self.views.values():
+            for view in views.values():
+                # Don't forget to remove persistent views when the cog is unloaded.
+                log.verbose("Stopping view %s", view)
+                view.stop()
+
+    def cog_check(self, ctx: commands.Context) -> bool:
+        return self._ready.is_set()
+
+    async def load_views(self):
+        await self.bot.wait_until_red_ready()
+        try:
+            await self.initialize_buttons()
+        except Exception:
+            log.exception("Error initializing Buttons")
+        for guild_id, guild_views in self.views.items():
+            for msg_ids, view in guild_views.items():
+                log.trace("Adding view %r to %s", view, guild_id)
+                channel_id, message_id = msg_ids.split("-")
+                self.bot.add_view(view, message_id=int(message_id))
+                # These should be unique messages containing views
+                # and we should track them seperately
+        self._ready.set()
+
+    async def initialize_buttons(self):
+        all_settings = await self.config.all_guilds()
+        for guild_id, settings in all_settings.items():
+            if guild_id not in self.views:
+                log.trace("Adding guild ID %s to views in buttons", guild_id)
+                self.views[guild_id] = {}
+            for button_data in settings["buttons"]:
+                emoji = button_data["emoji"]
+                if emoji is not None:
+                    emoji = discord.PartialEmoji.from_str(emoji)
+
+                message_id = button_data["message_id"]
+                button = SteamIDEntryButton(
+                    self,
+                    custom_id=button_data["custom_id"],
+                    style=button_data["style"],
+                    label=button_data["label"],
+                    emoji=emoji,
+                )
+                if message_id not in self.views[guild_id]:
+                    self.views[guild_id][message_id] = discord.ui.View(timeout = None)
+                    self.views[guild_id][message_id].add_item(button)
 
     def validate_steamid(self, steam_id: str) -> bool:
         return len(steam_id) == 17 and steam_id[0:5] == "76561"
@@ -114,20 +224,40 @@ class SteamWhitelist(commands.Cog, metaclass=CompositeMetaClass):
             if self.user_whitelisted_internal(member, settings["roles"]):
                 await self.update_whitelist(guild)
 
-    @commands.command(name="steamid")
-    async def steamid(self, ctx: commands.Context, steam_id: str = ""):        
-        """Manage your own SteamID for the Steam Whitelist"""
+    async def set_steamid(self, steam_id, user, guild) -> bool:
+        """Helper function to set and save the steamid of a user"""
         steam_id = steam_id.strip()
         if steam_id:
             if self.validate_steamid(steam_id):
-                await self.config.user(ctx.author).steam_id.set(steam_id)
-                await ctx.send(f"{ctx.author.mention}, your Steam ID was saved", delete_after=10)
-
-                if ctx.guild:
-                    if await self.user_whitelisted(ctx.author):
-                        await self.update_whitelist(ctx.guild)
+                await self.config.user(user).steam_id.set(steam_id)
+                if guild:
+                    if await self.user_whitelisted(user):
+                        await self.update_whitelist(guild)
                 else:
-                    await self.update_all_guilds_for_member(ctx.author)
+                    await self.update_all_guilds_for_member(user)
+
+                return True
+
+        return False
+
+    @app_commands.command()
+    async def steamid(self, interaction: discord.Interaction, steam_id: str = ""):
+        """Set your SteamID to be added to the community server whitelist"""
+        if steam_id:
+            if await self.set_steamid(steam_id, interaction.user, interaction.guild):
+                await interaction.response.send_message(f"Your Steam ID was saved as: {steam_id}", ephemeral=True)
+            else:
+                await interaction.response.send_message("The provided SteamID is invalid. Only SteamID64 is supported (76561...)", ephemeral=True)
+        else:
+            await interaction.response.send_modal(SteamIDEntry(self))
+
+    @commands.command(name="steamid")
+    async def steamid_text(self, ctx: commands.Context, steam_id: str = ""):
+        """Manage your own SteamID for the Steam Whitelist"""
+        steam_id = steam_id.strip()
+        if steam_id:
+            if await self.set_steamid(steam_id, ctx.author, ctx.guild):
+                await ctx.send(f"{ctx.author.mention}, your Steam ID was saved", delete_after=10)
             else:
                 await ctx.send(f"{ctx.author.mention}, the provided SteamID is invalid. Only SteamID64 is supported (76561...)", delete_after=10)
         else:
@@ -273,6 +403,35 @@ class SteamWhitelist(commands.Cog, metaclass=CompositeMetaClass):
                 await ctx.send("Whitelist file set.", delete_after=4)
         except:
             await ctx.send("Specified file is not accessible.", delete_after=4)
+
+    ### WIP button support
+    @steamwhitelist.command(name = "sendbutton")
+    @commands.is_owner()
+    async def sendbutton(self, ctx: commands.Context, channel: discord.TextChannel, label: str, emoji: str, style: ButtonStyleConverter, message: str):
+        """
+        Send a Button to set the Steam ID
+
+        - `channel` - Channel to send to
+        - `label` - Label of the button
+        - `emoji` - Emoji on the button
+        - `style` - Style of the button
+        - `message` - Text Message to go with it
+
+        Example:
+            [p]steamwhitelist sendbutton #test "Set Steam ID" 😀 primary "Beep-Boop, set your Steam ID by clicking the button"
+        """
+        if ctx.guild.id not in self.views:
+            self.views[ctx.guild.id] = {}
+
+        view = discord.ui.View(timeout=None)
+        view.add_item(SteamIDEntryButton(self, custom_id="zebramonkey_steamwhitelist_button", style=style, label=label, emoji=emoji))
+        msg = await channel.send(content=message, view=view)
+        message_key = f"{msg.channel.id}-{msg.id}"
+
+        self.views[ctx.guild.id][message_key] = view
+        async with self.config.guild(ctx.guild).buttons() as buttons:
+            buttons.append({"label": label, "emoji": emoji, "style": style, "custom_id": "zebramonkey_steamwhitelist_button", "message_id": message_key})
+        # TODO: also offer a cleanup in case buttons get deleted?
 
     ### listeners
     @commands.Cog.listener()
