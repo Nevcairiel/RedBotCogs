@@ -66,7 +66,9 @@ class SteamWhitelist(commands.Cog, metaclass=CompositeMetaClass):
         self.config.register_guild(**default_guild)
         
         # default per-user settings
-        default_user = {}
+        default_user = {
+            "steam_id": ""
+        }
         self.config.register_user(**default_user)
 
     async def cog_load(self) -> None:
