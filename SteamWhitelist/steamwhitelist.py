@@ -4,6 +4,7 @@ from typing import Literal
 import discord
 import logging
 import os
+import re
 from redbot.core import Config
 from redbot.core import commands, app_commands
 
@@ -76,7 +77,7 @@ class SteamWhitelist(commands.Cog, metaclass=CompositeMetaClass):
         self.persistentView.stop()
 
     def validate_steamid(self, steam_id: str) -> bool:
-        return len(steam_id) == 17 and steam_id[0:5] == "76561"
+        return len(steam_id) == 17 and steam_id[0:5] == "76561" and re.match("^[0-9]*$", steam_id)
 
     async def red_delete_data_for_user(self, *, requester: Literal["discord_deleted_user", "owner", "user", "user_strict"], user_id: int):
         """Method for finding users data inside the cog and deleting it."""
