@@ -364,6 +364,5 @@ class SteamWhitelist(commands.Cog, metaclass=CompositeMetaClass):
 
     @commands.Cog.listener()
     async def on_member_remove(self, member: discord.Member) -> None:
-        await self.config.member(member).clear()
         if await self.user_whitelisted(member):
             await self.update_whitelist(member.guild)
