@@ -45,6 +45,16 @@ class LinkedRoles(commands.Cog):
     @commands.admin()
     @commands.guild_only()
     async def setup(self, ctx: commands.Context, role: discord.Role) -> None:
+        """Setup a role to be linked to other roles
+
+        A linked role depends on the presence of reference roles.
+        If the user has the reference roles, they can manage the linked role
+        on their own. If all reference roles are lost, the linked role is also
+        removed, but it will be restored if any of the reference roles is regained.
+
+        Example:
+        `[p]linkedroles setup @MyRole`
+        """
         linked_roles = await self.config.guild(ctx.guild).linked_roles()
         role_id = str(role.id)
         if role_id in linked_roles:
@@ -59,6 +69,7 @@ class LinkedRoles(commands.Cog):
     @commands.admin()
     @commands.guild_only()
     async def delete(self, ctx: commands.Context, role: discord.Role) -> None:
+        """Delete a linked role"""
         linked_roles = await self.config.guild(ctx.guild).linked_roles()
         role_id = str(role.id)
         if role_id in linked_roles:
@@ -80,6 +91,11 @@ class LinkedRoles(commands.Cog):
     @commands.admin()
     @commands.guild_only()
     async def addrole(self, ctx: commands.Context, linkedrole: discord.Role, refrole: discord.Role) -> None:
+        """"Add a reference role to a linekd role
+
+        Example:
+        `[p]linkedroles addrole @MyLinkedRole @MyReferenceRole`
+        """
         linked_roles = await self.config.guild(ctx.guild).linked_roles()
         role_id = str(linkedrole.id)
         if role_id in linked_roles:
@@ -97,6 +113,11 @@ class LinkedRoles(commands.Cog):
     @commands.admin()
     @commands.guild_only()
     async def removerole(self, ctx: commands.Context, linkedrole: discord.Role, refrole: discord.Role) -> None:
+        """"Remove a reference role from a linekd role
+
+        Example:
+        `[p]linkedroles removerole @MyLinkedRole @MyReferenceRole`
+        """
         linked_roles = await self.config.guild(ctx.guild).linked_roles()
         role_id = str(linkedrole.id)
         if role_id in linked_roles:
@@ -114,6 +135,7 @@ class LinkedRoles(commands.Cog):
     @commands.admin()
     @commands.guild_only()
     async def updatemembers(self, ctx: commands.Context) -> None:
+        """"Process all members after changing the linked role configuration"""
         member_count = 0
         async with ctx.typing():
             for member in ctx.guild.members:
