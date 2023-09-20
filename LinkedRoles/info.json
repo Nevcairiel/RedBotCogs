@@ -1,0 +1,12 @@
+{
+    "author" : ["nevcairiel"],
+    "install_msg" : "You've just installed the LinkedRoles cog!",
+    "name" : "LinkedRoles",
+    "short" : "Link roles together",
+    "description" : "Setup a role to require users to have a different role",
+    "required_cogs": {},
+    "requirements": [],
+    "min_bot_version": "3.5.0",
+    "tags": [],
+    "type": "COG"
+}
