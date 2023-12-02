@@ -97,7 +97,7 @@ class AdForum(commands.Cog):
             await ctx.send("The forum is not setup.")
             return
         
-        forums.remove(forum_id)
+        del forums[forum_id]
         await self.config.guild(ctx.guild).forums.set(forums)
         await ctx.send("The forum config was deleted.")
 
