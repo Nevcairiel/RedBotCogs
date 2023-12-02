@@ -33,11 +33,12 @@ class AdForum(commands.Cog):
 
     async def _sync_forum(self, forum: discord.ForumChannel) -> None:
         forums = await self.config.guild(forum.guild).forums()
-        if forum.id not in forums:
+        forum_id = str(forum.id)
+        if forum_id not in forums:
             log.warning("forum is not being tracked")
             return
         
-        role = forum.guild.get_role(forums[forum.id])
+        role = forum.guild.get_role(forums[forum_id])
         if not role:
             log.warning("role not found")
             return
@@ -71,11 +72,12 @@ class AdForum(commands.Cog):
     async def setup(self, ctx: commands.Context, forum: discord.ForumChannel, role: discord.Role) -> None:
         """Setup a new Ad Forum"""
         forums = await self.config.guild(ctx.guild).forums()
-        if forum.id in forums:
+        forum_id = str(forum_id)
+        if forum_id in forums:
             await ctx.send("The forum is already setup.")
             return
 
-        forums[forum.id] = role.id
+        forums[forum_id] = role.id
         await self.config.guild(ctx.guild).forums.set(forums)
 
         async with ctx.typing():
@@ -90,11 +92,12 @@ class AdForum(commands.Cog):
     async def delete(self, ctx: commands.Context, forum: discord.ForumChannel) -> None:
         """Delete an Ad Forum"""
         forums = await self.config.guild(ctx.guild).forums()
-        if forum.id not in forums:
+        forum_id = str(forum_id)
+        if forum_id not in forums:
             await ctx.send("The forum is not setup.")
             return
         
-        forums.remove(forum.id)
+        forums.remove(forum_id)
         await self.config.guild(ctx.guild).forums.set(forums)
         await ctx.send("The forum config was deleted.")
 
