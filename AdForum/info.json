@@ -1,0 +1,12 @@
+{
+    "author" : ["nevcairiel"],
+    "install_msg" : "You've just installed the AdForum cog!",
+    "name" : "AdForum",
+    "short" : "Manage an AdForum",
+    "description" : "Manage an AdForum by assigning roles",
+    "required_cogs": {},
+    "requirements": [],
+    "min_bot_version": "3.5.0",
+    "tags": [],
+    "type": "COG"
+}
