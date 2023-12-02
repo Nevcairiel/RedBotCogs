@@ -29,7 +29,7 @@ class AdForum(commands.Cog):
     async def _process_thread(self, thread: discord.Thread) -> None:
         forums = await self.config.guild(thread.guild).forums()
         if thread.parent_id in forums:
-            await thread.owner.add_roles(thread.guild.get_role(forums[thread.parent_id]), "AdForum Thread created")
+            await thread.owner.add_roles(thread.guild.get_role(forums[thread.parent_id]), reason = "AdForum Thread created")
 
     async def _sync_forum(self, forum: discord.ForumChannel) -> None:
         forums = await self.config.guild(forum.guild).forums()
@@ -48,16 +48,16 @@ class AdForum(commands.Cog):
         for thread in forum.threads:
             user_list.append(thread.owner)
             if thread.owner not in role_members:
-                await thread.owner.add_roles(role, "AdForum Thread sync")
+                await thread.owner.add_roles(role, reason = "AdForum Thread sync")
 
         async for thread in forum.archived_threads(limit = None):
             user_list.append(thread.owner)
             if thread.owner not in role_members:
-                await thread.owner.add_roles(role, "AdForum Thread sync")
+                await thread.owner.add_roles(role, reason = "AdForum Thread sync")
 
         for member in role_members:
             if member not in user_list:
-                await member.remove_roles(role, "AdForum Thread sync")
+                await member.remove_roles(role, reason = "AdForum Thread sync")
 
     @commands.group()
     @commands.admin()
@@ -111,7 +111,7 @@ class AdForum(commands.Cog):
         forums = await self.config.guild_from_id(payload.guild_id).forums()
         if payload.parent_id in forums:
             if payload.thread:
-                await payload.thread.owner.remove_roles(payload.thread.guild.get_role(forums[payload.parent_id]), "AdForum Thread deleted")
+                await payload.thread.owner.remove_roles(payload.thread.guild.get_role(forums[payload.parent_id]), reason = "AdForum Thread deleted")
             else:
                 guild = self.bot.get_guild(payload.guild_id)                
                 await self._sync_threads(guild.get_channel(payload.parent_id))
