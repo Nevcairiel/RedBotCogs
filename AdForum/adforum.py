@@ -72,7 +72,7 @@ class AdForum(commands.Cog):
     async def setup(self, ctx: commands.Context, forum: discord.ForumChannel, role: discord.Role) -> None:
         """Setup a new Ad Forum"""
         forums = await self.config.guild(ctx.guild).forums()
-        forum_id = str(forum_id)
+        forum_id = str(forum.id)
         if forum_id in forums:
             await ctx.send("The forum is already setup.")
             return
@@ -92,7 +92,7 @@ class AdForum(commands.Cog):
     async def delete(self, ctx: commands.Context, forum: discord.ForumChannel) -> None:
         """Delete an Ad Forum"""
         forums = await self.config.guild(ctx.guild).forums()
-        forum_id = str(forum_id)
+        forum_id = str(forum.id)
         if forum_id not in forums:
             await ctx.send("The forum is not setup.")
             return
