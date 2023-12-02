@@ -28,8 +28,9 @@ class AdForum(commands.Cog):
 
     async def _process_thread(self, thread: discord.Thread) -> None:
         forums = await self.config.guild(thread.guild).forums()
-        if thread.parent_id in forums:
-            await thread.owner.add_roles(thread.guild.get_role(forums[thread.parent_id]), reason = "AdForum Thread created")
+        forum_id = str(thread.parent_id)
+        if forum_id in forums:
+            await thread.owner.add_roles(thread.guild.get_role(forums[forum_id]), reason = "AdForum Thread created")
 
     async def _sync_forum(self, forum: discord.ForumChannel) -> None:
         forums = await self.config.guild(forum.guild).forums()
