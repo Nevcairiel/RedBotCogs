@@ -109,9 +109,10 @@ class AdForum(commands.Cog):
     @commands.Cog.listener()
     async def on_raw_thread_delete(self, payload: discord.RawThreadDeleteEvent) -> None:
         forums = await self.config.guild_from_id(payload.guild_id).forums()
-        if payload.parent_id in forums:
+        forum_id = str(payload.parent_id)
+        if forum_id in forums:
             if payload.thread:
-                await payload.thread.owner.remove_roles(payload.thread.guild.get_role(forums[payload.parent_id]), reason = "AdForum Thread deleted")
+                await payload.thread.owner.remove_roles(payload.thread.guild.get_role(forums[forum_id]), reason = "AdForum Thread deleted")
             else:
-                guild = self.bot.get_guild(payload.guild_id)                
+                guild = self.bot.get_guild(payload.guild_id)
                 await self._sync_threads(guild.get_channel(payload.parent_id))
