@@ -34,7 +34,7 @@ class CFModTracker(commands.Cog):
     async def cfmod(self, ctx: commands.Context):
         """Post when new videos are added to a YouTube channel"""
 
-    @checks.admin_or_permissions(manage_guild=True)
+    @checks.is_owner()
     @cfmod.command()
     async def setapikey(self, ctx: commands.Context, api_key: str):
          """Set the CurseForge API key for this cog."""
