@@ -1,0 +1,14 @@
+{
+    "author" : ["nevcairiel"],
+    "install_msg" : "You've just installed the CFModUpdateTracker cog!",
+    "name" : "CFModTracker",
+    "short" : "Get notifications on CF Mod updates",
+    "description" : "Get notifications on CF Mod updates",
+    "required_cogs": {},
+    "requirements": [
+        "requests"
+    ],
+    "min_bot_version": "3.5.0",
+    "tags": [],
+    "type": "COG"
+}
