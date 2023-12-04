@@ -162,7 +162,7 @@ class CFModTracker(commands.Cog):
             channel = f'{sub["channel"]["name"][:103]} ({sub["channel"]["id"]})'  # Max 124 chars
             subs_by_channel[channel] = [
                 # Sub entry must be max 100 chars: 45 + 2 + 24 + 4 + 25 = 100
-                f"{sub.get('name', sub['id'][:45])} ({sub['id']}) - {sub.get('previous', 'Never')}",
+                f"{sub['id']} - {sub.get('previous_date', 'Never')}",
                 # Preserve previous entries
                 *subs_by_channel.get(channel, []),
             ]
@@ -250,7 +250,7 @@ class CFModTracker(commands.Cog):
             last_mod_hash = sub.get("previous_fingerprint", "")
             data = cache[sub["id"]]
             fileDate = dateutil.parser.isoparse(data["latestFiles"][0]["fileDate"])
-            if fileDate > last_mod_time and last_mod_hash is not data["latestFiles"][0]["fileFingerprint"]:
+            if (fileDate > last_mod_time and last_mod_hash is not data["latestFiles"][0]["fileFingerprint"]) or demo:
                 altered = True
                 subs[i]["previous_date"] = data["latestFiles"][0]["fileDate"]
                 subs[i]["previous_fingerprint"] = data["latestFiles"][0]["fileFingerprint"]
