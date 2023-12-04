@@ -21,13 +21,13 @@ class CFModTracker(commands.Cog):
     def __init__(self, bot: bot.Red):
         self.bot = bot
         self.conf = Config.get_conf(self, identifier=923552983512876, force_registration=True)
-        self.conf.register_guild(subscriptions=[], cache=[])
+        self.conf.register_guild(subscriptions=[])
         self.conf.register_global(api_key="", interval=300)
         self.background_check_updates.start()
 
     @commands.group()
     async def cfmod(self, ctx: commands.Context):
-        """Post when new videos are added to a YouTube channel"""
+        """Post when new mod updates are available on CurseForge"""
 
     @checks.is_owner()
     @cfmod.command()
