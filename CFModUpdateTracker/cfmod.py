@@ -39,7 +39,8 @@ class CFModTracker(commands.Cog):
     async def setapikey(self, ctx: commands.Context, api_key: str):
          """Set the CurseForge API key for this cog."""
          await self.conf.api_key.set(api_key)
-         await ctx.message.delete()
+         if ctx.guild:
+            await ctx.message.delete()
          await ctx.send("CurseForge API key set successfully!")
 
     @checks.admin_or_permissions(manage_guild=True)
