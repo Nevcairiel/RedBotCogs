@@ -111,6 +111,8 @@ class CFModTracker(commands.Cog):
     async def customize(self, ctx: commands.Context, modId, customMessage: str = False):
         """Add a custom message to a mod notification
 
+        You can use the tokens %name% (mod name), and %url% (project website) in the message.
+
         [p]cfmod customize 928548 "A new Shiny! Dino version is available now!"
 
         You can also remove customization by not specifying any message.
