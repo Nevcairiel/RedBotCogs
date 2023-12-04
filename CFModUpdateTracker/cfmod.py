@@ -71,7 +71,7 @@ class CFModTracker(commands.Cog):
                 await ctx.send("This subscription already exists!")
                 return
         
-        data = self.get_json(newSub["id"], api_key)
+        data = await self.get_json(newSub["id"], api_key)
         file = data["latestFiles"][0]
         if file and file["fileDate"]:
             newSub["previous_date"] = file["fileDate"]
