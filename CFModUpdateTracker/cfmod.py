@@ -221,23 +221,28 @@ class CFModTracker(commands.Cog):
 
     async def get_json(self, modId, api_key):
         r = requests.get(f"https://api.curseforge.com/v1/mods/{modId}", headers={'X-Api-Key': api_key})
-        json = r.json()
-        if isinstance(json, dict):
-            return json["data"]
+        if r.status_code == 200:
+            try:
+                json = r.json()
+                if isinstance(json, dict):
+                    return json["data"]
+            except requests.exceptions.JSONDecodeError:
+                log.exception("Parsing JSON failed, despite server reporting success")
         return None
 
     async def get_changelog(self, modId, fileId, api_key):
         r = requests.get(f"https://api.curseforge.com/v1/mods/{modId}/files/{fileId}/changelog", headers={'X-Api-Key': api_key})
-        json = r.json()
-        if json and isinstance(json, dict):
-            changelog = json["data"]
-            text_maker = html2text.HTML2Text()
-            text_maker.ignore_links = True
-            text_maker.bypass_tables = False
-            text_maker.emphasis_mark = '*'
-            text_maker.ul_item_mark = '-'
-            text_maker.body_width = 0
-            return text_maker.handle(changelog)
+        if r.status_code == 200:
+            json = r.json()
+            if json and isinstance(json, dict):
+                changelog = json["data"]
+                text_maker = html2text.HTML2Text()
+                text_maker.ignore_links = True
+                text_maker.bypass_tables = False
+                text_maker.emphasis_mark = '*'
+                text_maker.ul_item_mark = '-'
+                text_maker.body_width = 0
+                return text_maker.handle(changelog)
         return None
 
     async def _check_for_updates(
