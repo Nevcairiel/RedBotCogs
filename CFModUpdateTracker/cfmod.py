@@ -1,13 +1,8 @@
 # -*- coding: utf-8 -*-
-import datetime
 import dateutil.parser
 import hashlib
-import html
 import logging
-import re
-import time
 import requests
-from random import randint
 from typing import Optional
 
 import discord
@@ -66,8 +61,9 @@ class CFModTracker(commands.Cog):
             "id": modId,
             "channel": {"name": channelDiscord.name, "id": channelDiscord.id},
         }
+        newSub["uid"] = self.sub_uid(newSub)
         for sub in subs:
-            if sub["id"] == modId and sub["channel"]["id"] == channelDiscord.id:
+            if sub["uid"] == newSub["uid"]:
                 await ctx.send("This subscription already exists!")
                 return
         
@@ -95,8 +91,13 @@ class CFModTracker(commands.Cog):
         """
         subs = await self.conf.guild(ctx.guild).subscriptions()
         unsubbed = []
+        if channelDiscord:
+            newSub = {"id": modId, "channel": {"id": channelDiscord.id}}
+            unsubTarget, unsubType = self.sub_uid(newSub), "uid"
+        else:
+            unsubTarget, unsubType = modId, "id"
         for i, sub in enumerate(subs):
-            if sub["id"] == modId and (not channelDiscord or sub["channel"]["id"] == channelDiscord.id):
+            if sub[unsubType] == unsubTarget:
                 unsubbed.append(subs.pop(i))
         if not len(unsubbed):
             await ctx.send("Subscription not found")
@@ -207,6 +208,14 @@ class CFModTracker(commands.Cog):
     async def demo(self, ctx: commands.Context):
         """Post the latest update from all subscriptions"""
         await self._check_for_updates(ctx.message.guild, demo=True)
+
+    def sub_uid(self, subscription: dict):
+        """A subscription must have a unique combination of Mod ID and Discord channel"""
+        try:
+            canonicalString = f'{subscription["id"]}:{subscription["channel"]["id"]}'
+        except KeyError:
+            raise ValueError("Subscription object is malformed")
+        return hashlib.sha256(canonicalString.encode()).hexdigest()
 
     async def get_json(self, modId, api_key):
         r = requests.get(f"https://api.curseforge.com/v1/mods/{modId}", headers={'X-Api-Key': api_key})
