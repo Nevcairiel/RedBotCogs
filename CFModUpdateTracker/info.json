@@ -6,7 +6,8 @@
     "description" : "Get notifications on CF Mod updates",
     "required_cogs": {},
     "requirements": [
-        "requests"
+        "requests",
+        "html2text"
     ],
     "min_bot_version": "3.5.0",
     "tags": [],

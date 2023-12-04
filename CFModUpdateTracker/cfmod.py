@@ -3,6 +3,7 @@ import dateutil.parser
 import hashlib
 import logging
 import requests
+import html2text
 from typing import Optional
 
 import discord
@@ -11,7 +12,6 @@ from redbot.core import Config, bot, checks, commands
 from redbot.core.utils.chat_formatting import pagify
 
 log = logging.getLogger("red.nevcairiel.cfmodtracker")
-
 
 class CFModTracker(commands.Cog):
     """CurseForge Mod Update Tracker"""
@@ -226,6 +226,20 @@ class CFModTracker(commands.Cog):
             return json["data"]
         return None
 
+    async def get_changelog(self, modId, fileId, api_key):
+        r = requests.get(f"https://api.curseforge.com/v1/mods/{modId}/files/{fileId}/changelog", headers={'X-Api-Key': api_key})
+        json = r.json()
+        if json and isinstance(json, dict):
+            changelog = json["data"]
+            text_maker = html2text.HTML2Text()
+            text_maker.ignore_links = True
+            text_maker.bypass_tables = False
+            text_maker.emphasis_mark = '*'
+            text_maker.ul_item_mark = '-'
+            text_maker.body_width = 0
+            return text_maker.handle(changelog)
+        return None
+
     async def _check_for_updates(
         self,
         guild: discord.Guild,
@@ -266,18 +280,27 @@ class CFModTracker(commands.Cog):
                 subs[i]["previous_date"] = data["latestFiles"][0]["fileDate"]
                 subs[i]["previous_fingerprint"] = data["latestFiles"][0]["fileFingerprint"]
 
+                changelog_key = f"{sub['id']}_changelog"
+                if not changelog_key in cache.keys():
+                    cache[changelog_key] = await self.get_changelog(sub["id"], data["latestFiles"][0]["id"], api_key)
+
                 # Build custom description if one is set
                 custom = sub.get("custom", False)
                 if custom:
                     custom = custom.replace("%name%", data["name"])
                     custom = custom.replace("%url%", data["links"]["websiteUrl"])
+                    if changelog_key in cache.keys():
+                        custom = custom.replace("%changelog%", cache[changelog_key])
                     description = f"{custom}"
                 # Default descriptions
                 else:
                     description = (
-                        f"A new update for **{data['name']}** is available:"
+                        f"A new update for **{data['name']}** is available"
                         f"\n<{data['links']['websiteUrl']}>"
                     )
+
+                    if changelog_key in cache.keys():
+                        description = description + f"\n\n**Changelog**\n{cache[changelog_key]}"
 
                 mention_id = sub.get("mention", False)
                 if mention_id:
