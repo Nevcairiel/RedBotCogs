@@ -5,6 +5,7 @@ import logging
 import requests
 import html2text
 from typing import Optional
+from operator import length_hint
 
 import discord
 from discord.ext import tasks
@@ -72,9 +73,10 @@ class CFModTracker(commands.Cog):
         if file and file["fileDate"]:
             newSub["previous_date"] = file["fileDate"]
             newSub["previous_fingerprint"] = file["fileFingerprint"]
+            newSub["name"] = data["name"]
         subs.append(newSub)
         await self.conf.guild(ctx.guild).subscriptions.set(subs)
-        await ctx.send(f"Subscription added: {newSub}")
+        await ctx.send(f"Subscription added for **{newSub['name']}** ({newSub['id']}) in <#{newSub['channel']['id']}>")
 
     @checks.admin_or_permissions(manage_guild=True)
     @commands.guild_only()
@@ -103,7 +105,11 @@ class CFModTracker(commands.Cog):
             await ctx.send("Subscription not found")
             return
         await self.conf.guild(ctx.guild).subscriptions.set(subs)
-        await ctx.send(f"Subscription(s) removed: {unsubbed}")
+
+        message = ""
+        for sub in unsubbed:
+            message += f"\n**{sub['name'] if 'name' in sub else 'unknown'}** ({sub['id']}) in <#{sub['channel']['id']}>"
+        await ctx.send(f"Subscription(s) removed:{message}")
 
     @checks.admin_or_permissions(manage_guild=True)
     @commands.guild_only()
@@ -162,10 +168,10 @@ class CFModTracker(commands.Cog):
         subs_by_channel = {}
         for sub in subs:
             # Channel entry must be max 124 chars: 103 + 2 + 18 + 1
-            channel = f'{sub["channel"]["name"][:103]} ({sub["channel"]["id"]})'  # Max 124 chars
+            channel = f'<#{sub["channel"]["id"]}> ({sub["channel"]["id"]})'  # Max 124 chars
             subs_by_channel[channel] = [
                 # Sub entry must be max 100 chars: 45 + 2 + 24 + 4 + 25 = 100
-                f"{sub['id']} - {sub.get('previous_date', 'Never')}",
+                f"{sub['name']} ({sub['id']}) - Last Updated: {sub.get('previous_date', 'Never')}",
                 # Preserve previous entries
                 *subs_by_channel.get(channel, []),
             ]
@@ -187,13 +193,13 @@ class CFModTracker(commands.Cog):
         else:
             subs_string = ""
             for channel, sub_ids in subs_by_channel.items():
-                subs_string += f"\n\n{channel}"
+                subs_string += f"\n{channel}"
                 for sub in sub_ids:
                     subs_string += f"\n{sub}"
             pages = pagify(subs_string, delims=["\n\n"], shorten_by=12)
             for i, page in enumerate(pages):
                 title = "**CF Mod Subs**"
-                if len(pages) > 1:
+                if length_hint(pages) > 1:
                     title += f" ({i}/{len(pages)})"
                 await ctx.send(f"{title}\n{page}")
 
@@ -284,6 +290,7 @@ class CFModTracker(commands.Cog):
                 altered = True
                 subs[i]["previous_date"] = data["latestFiles"][0]["fileDate"]
                 subs[i]["previous_fingerprint"] = data["latestFiles"][0]["fileFingerprint"]
+                subs[i]["name"] = data["name"]
 
                 changelog_key = f"{sub['id']}_changelog"
                 if not changelog_key in cache.keys():
