@@ -22,7 +22,7 @@ class CFModTracker(commands.Cog):
     def __init__(self, bot: bot.Red):
         self.bot = bot
         self.conf = Config.get_conf(self, identifier=923552983512876, force_registration=True)
-        self.conf.register_guild(subscriptions=[])
+        self.conf.register_guild(subscriptions=[], use_embeds=False)
         self.conf.register_global(api_key="", interval=300)
         self.background_check_updates.start()
 
@@ -260,6 +260,7 @@ class CFModTracker(commands.Cog):
         try:
             subs = await self.conf.guild(guild).subscriptions()
             api_key = await self.conf.api_key()
+            use_embeds = await self.conf.guild(guild).use_embeds()
             if not api_key:
                 log.warning(f"CurseForge API key not set")
                 return
@@ -303,29 +304,47 @@ class CFModTracker(commands.Cog):
                     custom = custom.replace("%url%", data["links"]["websiteUrl"])
                     if changelog_key in cache.keys():
                         custom = custom.replace("%changelog%", cache[changelog_key])
-                    description = f"{custom}"
-                # Default descriptions
-                else:
-                    description = (
-                        f"A new update for **{data['name']}** is available"
-                        f"\n<{data['links']['websiteUrl']}>"
-                    )
+                    custom = f"{custom}"
 
-                    if changelog_key in cache.keys():
-                        description = description + f"\n\n**Changelog**\n{cache[changelog_key]}"
-
-                mention_id = sub.get("mention", False)
-                if mention_id:
-                    if mention_id == guild.id:
-                        description = f"{guild.default_role} {description}"
-                        mentions = discord.AllowedMentions(everyone=True)
+                if use_embeds and channel.permissions_for(guild.me).embed_links:
+                    if custom:
+                        description = custom
                     else:
-                        description = f"<@&{mention_id}> {description}"
-                        mentions = discord.AllowedMentions(roles=True)
-                else:
-                    mentions = discord.AllowedMentions()
+                        description = (
+                            f"A new update for **{data['name']}** is available"
+                        )
+                        if changelog_key in cache.keys():
+                            description = description + f"\n\n**Changelog**\n{cache[changelog_key]}"
 
-                await channel.send(content=description, allowed_mentions=mentions)
+                    embed = discord.Embed()
+                    embed.url = data["links"]["websiteUrl"]
+                    embed.title = f"{data['name']} was updated!"
+                    embed.description = description
+                    embed.set_thumbnail(url=data["logo"]["thumbnailUrl"])
+                    await channel.send(embed=embed)
+                else:
+                    if custom:
+                        description = custom
+                    else:
+                        description = (
+                            f"A new update for **{data['name']}** is available"
+                            f"\n<{data['links']['websiteUrl']}>"
+                        )
+                        if changelog_key in cache.keys():
+                            description = description + f"\n\n**Changelog**\n{cache[changelog_key]}"
+
+                    mention_id = sub.get("mention", False)
+                    if mention_id:
+                        if mention_id == guild.id:
+                            description = f"{guild.default_role}\n{description}"
+                            mentions = discord.AllowedMentions(everyone=True)
+                        else:
+                            description = f"<@&{mention_id}>\n{description}"
+                            mentions = discord.AllowedMentions(roles=True)
+                    else:
+                        mentions = discord.AllowedMentions()
+
+                    await channel.send(content=description, allowed_mentions=mentions)
         
         if altered:
             await self.conf.guild(guild).subscriptions.set(subs)
@@ -343,6 +362,16 @@ class CFModTracker(commands.Cog):
         await self.conf.interval.set(interval)
         self.background_check_updates.change_interval(seconds=interval)
         await ctx.send(f"Interval set to {await self.conf.interval()}")
+
+    @checks.admin_or_permissions(manage_guild=True)
+    @commands.guild_only()
+    @cfmod.command(name="setembed")
+    async def set_interval(self, ctx: commands.Context, flag: bool):
+        """Set if fancy embeds should be used for mod notifications.
+
+        Note that embeds cannot notify people, so rolemention is not used"""
+        await self.conf.guild(ctx.guild).use_embeds.set(flag)
+        await ctx.send(f"Embeds {'enabled' if flag else 'disabled'}")
 
     async def cog_unload(self):
         self.background_check_updates.cancel()
