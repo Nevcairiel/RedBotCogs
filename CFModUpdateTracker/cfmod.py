@@ -42,7 +42,7 @@ class CFModTracker(commands.Cog):
     @checks.admin_or_permissions(manage_guild=True)
     @commands.guild_only()
     @cfmod.command()
-    async def track(self, ctx: commands.Context, modId, channelDiscord: Optional[discord.TextChannel] = None):
+    async def track(self, ctx: commands.Context, modId, channelDiscord: Optional[discord.TextChannel] = None, publish: Optional[bool] = False,):
         """Track a mod for updates
 
         The mod id needs to be specified for tracking
@@ -50,6 +50,8 @@ class CFModTracker(commands.Cog):
 
         Example:
         `[p]cfmod track 928548`
+
+        Setting the `publish` flag will cause new videos to be published to the specified channel. Using this on non-announcement channels may result in errors.
         """
         api_key = await self.conf.api_key()
         if not api_key:
@@ -61,6 +63,7 @@ class CFModTracker(commands.Cog):
         newSub = {
             "id": modId,
             "channel": {"name": channelDiscord.name, "id": channelDiscord.id},
+            "publish": publish,
         }
         newSub["uid"] = self.sub_uid(newSub)
         for sub in subs:
@@ -269,6 +272,7 @@ class CFModTracker(commands.Cog):
             return
         altered = False
         for i, sub in enumerate(subs):
+            publish = sub.get("publish", False)
             channel_id = sub["channel"]["id"]
             channel = self.bot.get_channel(int(channel_id))
             if not channel:
@@ -334,7 +338,9 @@ class CFModTracker(commands.Cog):
                     embed.title = f"{data['name']} was updated!"
                     embed.description = description
                     embed.set_thumbnail(url=data["logo"]["thumbnailUrl"])
-                    await channel.send(content=mention, embed=embed, allowed_mentions=mentions)
+                    message = await channel.send(content=mention, embed=embed, allowed_mentions=mentions)
+                    if publish:
+                        await message.publish()
                 else:
                     if custom:
                         description = custom
@@ -349,7 +355,9 @@ class CFModTracker(commands.Cog):
                     if mention:
                         description = f"{mention}\n{description}"
 
-                    await channel.send(content=description, allowed_mentions=mentions)
+                    message = await channel.send(content=description, allowed_mentions=mentions)
+                    if publish:
+                        await message.publish()
         
         if altered:
             await self.conf.guild(guild).subscriptions.set(subs)
