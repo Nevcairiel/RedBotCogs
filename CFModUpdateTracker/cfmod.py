@@ -154,6 +154,7 @@ class CFModTracker(commands.Cog):
         await self.conf.guild(ctx.guild).subscriptions.set(subs)
         await ctx.send(f'Role mention {"added" if rolemention else "removed" }')
 
+    @checks.admin_or_permissions(manage_guild=True)
     @commands.guild_only()
     @cfmod.command(name="list")
     async def showmods(self, ctx: commands.Context):
