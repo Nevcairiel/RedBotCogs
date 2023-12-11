@@ -4,6 +4,7 @@ import hashlib
 import logging
 import requests
 import html2text
+import re
 from typing import Optional
 from operator import length_hint
 
@@ -13,6 +14,9 @@ from redbot.core import Config, bot, checks, commands
 from redbot.core.utils.chat_formatting import pagify
 
 log = logging.getLogger("red.nevcairiel.cfmodtracker")
+
+CHANGELOG_LIST_FORMATTER = re.compile(r'^(\s*)\\([*-])', re.MULTILINE)
+CHANGELOG_LIST_FORMATTER_REP = r'\1\2'
 
 class CFModTracker(commands.Cog):
     """CurseForge Mod Update Tracker"""
@@ -252,7 +256,8 @@ class CFModTracker(commands.Cog):
                 text_maker.emphasis_mark = '*'
                 text_maker.ul_item_mark = '-'
                 text_maker.body_width = 0
-                return text_maker.handle(changelog)
+                text = text_maker.handle(changelog)
+                return CHANGELOG_LIST_FORMATTER.sub(CHANGELOG_LIST_FORMATTER_REP, text)
         return None
 
     async def _check_for_updates(
