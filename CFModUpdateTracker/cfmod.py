@@ -343,9 +343,12 @@ class CFModTracker(commands.Cog):
                     embed.title = f"{data['name']} was updated!"
                     embed.description = description
                     embed.set_thumbnail(url=data["logo"]["thumbnailUrl"])
-                    message = await channel.send(content=mention, embed=embed, allowed_mentions=mentions)
-                    if publish:
-                        await message.publish()
+                    try:
+                        message = await channel.send(content=mention, embed=embed, allowed_mentions=mentions)
+                        if publish:
+                            await message.publish()
+                    except:
+                        log.exception("Error when sending embed")
                 else:
                     if custom:
                         description = custom
@@ -360,10 +363,12 @@ class CFModTracker(commands.Cog):
                     if mention:
                         description = f"{mention}\n{description}"
 
-                    message = await channel.send(content=description, allowed_mentions=mentions)
-                    if publish:
-                        await message.publish()
-        
+                    try:
+                        message = await channel.send(content=description, allowed_mentions=mentions)
+                        if publish:
+                            await message.publish()
+                    except:
+                        log.exception("Error when sending message")
         if altered:
             await self.conf.guild(guild).subscriptions.set(subs)
         self.has_warned_about_invalid_channels = True
