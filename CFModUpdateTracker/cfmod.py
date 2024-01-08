@@ -257,9 +257,56 @@ class CFModTracker(commands.Cog):
                 text_maker.ul_item_mark = '-'
                 text_maker.body_width = 0
                 text = text_maker.handle(changelog)
+                text.replace('\r\n', '\n')
                 return CHANGELOG_LIST_FORMATTER.sub(CHANGELOG_LIST_FORMATTER_REP, text)
         return None
 
+    def _slice_message(self, message):
+        messages = []
+        lines = message.split('\n')
+        start_index = 0
+        lenaccum = 0
+        good_splitpoint = None
+        for index, line in enumerate(lines):
+            if index <= 5:
+                lenaccum += len(line) + 1
+                continue
+
+            # empty lines are a good split point
+            if not line.strip() and lenaccum >= 1000:
+                good_splitpoint = index+1
+            # or lines that don't start with a space
+            elif re.match(r'^\S', line) and lenaccum >= 1000:
+                good_splitpoint = index
+
+            linelen = len(line) + 1
+            # if the accumulated length + this line exceeds the limit, flush out what we have
+            if (lenaccum + linelen) > 1950:
+                listend = index
+                if good_splitpoint:
+                    listend = good_splitpoint
+
+                joined ="\n".join(lines[start_index:listend])
+                if messages:
+                    joined = f"**Changelog (continued)**\n{joined}"
+                messages.append(joined)
+
+                start_index = listend
+                good_splitpoint = None
+                if start_index != index:
+                    lenaccum = len("\n".join(lines[start_index:index]))
+                else:
+                    lenaccum = 0
+
+            lenaccum += linelen
+
+        if start_index < (len(lines)-1):
+            joined ="\n".join(lines[start_index:])
+            if messages:
+                joined = f"**Changelog (continued)**\n{joined}"
+            messages.append(joined)
+
+        return messages
     async def _check_for_updates(
         self,
         guild: discord.Guild,
@@ -363,10 +410,18 @@ class CFModTracker(commands.Cog):
                     if mention:
                         description = f"{mention}\n{description}"
 
+                    messages = []
+
+                    if len(description) > 1950:
+                        messages = self._slice_message(description)
+                    else:
+                        messages.append(description)
+
                     try:
-                        message = await channel.send(content=description, allowed_mentions=mentions)
-                        if publish:
-                            await message.publish()
+                        for message in messages:
+                            discord_message = await channel.send(content=message, allowed_mentions=mentions)
+                            if publish:
+                                await discord_message.publish()
                     except:
                         log.exception("Error when sending message")
         if altered:
