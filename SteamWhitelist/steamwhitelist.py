@@ -240,7 +240,7 @@ class SteamWhitelist(commands.Cog, metaclass=CompositeMetaClass):
                 for id in bans:
                     member = ctx.guild.get_member(id)
                     if member:
-                        message += member.name + "\n"
+                        message += f"{member.name} ({id})\n"
                     else:
                         message += id + "\n"
 
