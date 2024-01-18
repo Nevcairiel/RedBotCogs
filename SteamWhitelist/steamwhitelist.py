@@ -62,6 +62,7 @@ class SteamWhitelist(commands.Cog, metaclass=CompositeMetaClass):
             "roles": [],
             "whitelist": [],
             "bans": [],
+            "userbans": [],
         }
         self.config.register_guild(**default_guild)
         
@@ -111,6 +112,9 @@ class SteamWhitelist(commands.Cog, metaclass=CompositeMetaClass):
         # get bans
         bans = await self.config.guild(guild).bans()
 
+        # get userbans
+        userbans = await self.config.guild(guild).userbans()
+
         # collect all users
         all_users = await self.config.all_users()
         for user_id, settings in all_users.items():
@@ -119,6 +123,9 @@ class SteamWhitelist(commands.Cog, metaclass=CompositeMetaClass):
                 continue
 
             if steam_id in bans:
+                continue
+
+            if user_id in userbans:
                 continue
 
             member = guild.get_member(user_id)
@@ -206,16 +213,39 @@ class SteamWhitelist(commands.Cog, metaclass=CompositeMetaClass):
     @commands.admin()
     async def info(self, ctx: commands.Context):
         """Show information about the Steam whitelist"""
-        message = "Whitelisted Roles:\n"
         async with self.config.guild(ctx.guild).roles() as roles:
-            for role in roles:
-                message += ctx.guild.get_role(role).mention + "\n"
+            if roles:
+                message = "Whitelisted Roles:\n"
+                for role in roles:
+                    message += ctx.guild.get_role(role).mention + "\n"
         
-        message += "\n"
-        message += "Whitelisted Steam IDs:\n"
         async with self.config.guild(ctx.guild).whitelist() as whitelist:
-            for id in whitelist:
-                message += id + "\n"
+            if whitelist:
+                message += "\n"
+                message += "Whitelisted Steam IDs:\n"
+                for id in whitelist:
+                    message += id + "\n"
+
+        async with self.config.guild(ctx.guild).bans() as bans:
+            if bans:
+                message += "\n"
+                message += "Banned Steam IDs:\n"
+                for id in bans:
+                    message += id + "\n"
+
+        async with self.config.guild(ctx.guild).userbans() as bans:
+            if bans:
+                message += "\n"
+                message += "Banned Users:\n"
+                for id in bans:
+                    member = ctx.guild.get_member(id)
+                    if member:
+                        message += member.name + "\n"
+                    else:
+                        message += id + "\n"
+
+        if not message:
+            message = "Not setup yet"
         await ctx.maybe_send_embed(message)
 
     @steamwhitelist.command()
@@ -294,6 +324,29 @@ class SteamWhitelist(commands.Cog, metaclass=CompositeMetaClass):
         await ctx.send("The SteamID has been added to the ban list.", delete_after=4)
         await self.update_whitelist(ctx.guild)
 
+    @steamwhitelist.command(name = "banuser")
+    @commands.admin()
+    async def banuser(self, ctx: commands.Context, user: discord.User):
+        """Ban a user from having their SteamID whitelisted"""
+
+        # add to ban list
+        async with self.config.guild(ctx.guild).userbans() as bans:
+            if user.id not in bans:
+                bans.append(user.id)
+
+        # get the users steamid
+        steam_id = await self.config.user(ctx.author).steam_id()
+
+        # remove from whitelist, if its on there
+        if steam_id:
+            async with self.config.guild(ctx.guild).whitelist() as whitelist:
+                found = steam_id in whitelist
+                if found:
+                    whitelist.remove(steam_id)
+        # respond
+        await ctx.send("The User has been added to the ban list.", delete_after=4)
+        await self.update_whitelist(ctx.guild)
+
     @steamwhitelist.command(name = "unban")
     @commands.admin()
     async def removeban(self, ctx: commands.Context, steam_id: str):
@@ -308,6 +361,22 @@ class SteamWhitelist(commands.Cog, metaclass=CompositeMetaClass):
             await self.update_whitelist(ctx.guild)
         else:
             await ctx.send("The SteamID was not found.", delete_after=4)
+
+    @steamwhitelist.command(name = "unbanuser")
+    @commands.admin()
+    async def unbanuser(self, ctx: commands.Context, user: discord.User):
+        """Unban a user from having their SteamID whitelisted"""
+        # remove from ban list
+        async with self.config.guild(ctx.guild).userbans() as bans:
+            found = user.id in bans
+            if found:
+                bans.remove(user.id)
+
+        if found:
+            await ctx.send("The User was removed from the ban list.", delete_after=4)
+            await self.update_whitelist(ctx.guild)
+        else:
+            await ctx.send("The User was not banned", delete_after=4)
 
     @steamwhitelist.command(name = "sync")
     @commands.is_owner()
