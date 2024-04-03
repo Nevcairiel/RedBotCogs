@@ -343,6 +343,9 @@ class CFModTracker(commands.Cog):
             last_mod_time = dateutil.parser.isoparse(sub.get("previous_date", "1970-01-01T00:00:00+00:00"))
             last_mod_hash = sub.get("previous_fingerprint", "")
             data = cache[sub["id"]]
+            if not data:
+                log.warning(f"no data for subscription {sub['id']}")
+                continue
             fileDate = dateutil.parser.isoparse(data["latestFiles"][0]["fileDate"])
             if (fileDate > last_mod_time and last_mod_hash is not data["latestFiles"][0]["fileFingerprint"]) or demo:
                 altered = True
