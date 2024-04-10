@@ -116,4 +116,4 @@ class AdForum(commands.Cog):
                 await payload.thread.owner.remove_roles(payload.thread.guild.get_role(forums[forum_id]), reason = "AdForum Thread deleted")
             else:
                 guild = self.bot.get_guild(payload.guild_id)
-                await self._sync_threads(guild.get_channel(payload.parent_id))
+                await self._sync_forum(guild.get_channel(payload.parent_id))
