@@ -225,6 +225,24 @@ class CFModTracker(commands.Cog):
         """Post the latest update from all subscriptions"""
         await self._check_for_updates(ctx.message.guild, demo=True)
 
+    @checks.admin_or_permissions(manage_guild=True)
+    @commands.guild_only()
+    @cfmod.command()
+    async def post(self, ctx: commands.Context, modId):
+        """Post an update for the specified mod"""
+        subs = await self.conf.guild(ctx.guild).subscriptions()
+        found = False
+        for i, sub in enumerate(subs):
+            if sub["id"] == modId:
+                found = True
+                subs[i].pop('previous_date', None)
+                subs[i].pop('previous_fingerprint', None)
+        if not found:
+            await ctx.send("Subscription not found")
+            return
+        await self.conf.guild(ctx.guild).subscriptions.set(subs)
+        await self._check_for_updates(ctx.message.guild)
+
     def sub_uid(self, subscription: dict):
         """A subscription must have a unique combination of Mod ID and Discord channel"""
         try:
