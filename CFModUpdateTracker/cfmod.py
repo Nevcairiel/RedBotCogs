@@ -276,6 +276,7 @@ class CFModTracker(commands.Cog):
                 text_maker.body_width = 0
                 text = text_maker.handle(changelog)
                 text.replace('\r\n', '\n')
+                text = text.replace('&gt;', '>').replace('&lt;', '<')
                 return CHANGELOG_LIST_FORMATTER.sub(CHANGELOG_LIST_FORMATTER_REP, text)
         return None
 
