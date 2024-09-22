@@ -441,7 +441,7 @@ class CFModTracker(commands.Cog):
 
                     try:
                         for message in messages:
-                            discord_message = await channel.send(content=message, allowed_mentions=mentions)
+                            discord_message = await channel.send(content=message, allowed_mentions=mentions, suppress_embeds=True)
                             if publish:
                                 await discord_message.publish()
                     except:
