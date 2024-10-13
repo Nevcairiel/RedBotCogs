@@ -137,3 +137,11 @@ class AdForum(commands.Cog):
             else:
                 guild = self.bot.get_guild(payload.guild_id)
                 await self._sync_forum(guild.get_channel(payload.parent_id))
+
+    @commands.Cog.listener()
+    async def on_member_join(self, member: discord.Member) -> None:
+        forums = await self.config.guild_from_id(member.guild.id).forums()
+        for forum_id in forums:
+            forum_channel = member.guild.get_channel(int(forum_id))
+            if forum_channel:
+                await self._sync_forum(forum_channel)
