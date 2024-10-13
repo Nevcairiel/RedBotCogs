@@ -105,7 +105,7 @@ class AdForum(commands.Cog):
     @adforum.command()
     @commands.admin()
     @commands.guild_only()
-    async def delete(self, ctx: commands.Context, forum: discord.ForumChannel) -> None:
+    async def sync(self, ctx: commands.Context, forum: discord.ForumChannel) -> None:
         """Re-sync an Ad Forum channel"""
         forums = await self.config.guild(ctx.guild).forums()
         forum_id = str(forum.id)
