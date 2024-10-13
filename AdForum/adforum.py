@@ -49,14 +49,14 @@ class AdForum(commands.Cog):
         for thread in forum.threads:
             user_list.append(thread.owner)
             if not thread.owner:
-                log.warning(f"thread has no owner: {thread.id}, owner_id: {thread.owner_id}")
+                pass
             elif thread.owner not in role_members:
                 await thread.owner.add_roles(role, reason = "AdForum Thread sync")
 
         async for thread in forum.archived_threads(limit = None):
             user_list.append(thread.owner)
             if not thread.owner:
-                log.warning(f"archived thread has no owner: {thread.id}, owner_id: {thread.owner_id}")
+                pass
             elif thread.owner not in role_members:
                 await thread.owner.add_roles(role, reason = "AdForum Thread sync")
 
