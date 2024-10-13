@@ -102,6 +102,22 @@ class AdForum(commands.Cog):
         await self.config.guild(ctx.guild).forums.set(forums)
         await ctx.send("The forum config was deleted.")
 
+    @adforum.command()
+    @commands.admin()
+    @commands.guild_only()
+    async def delete(self, ctx: commands.Context, forum: discord.ForumChannel) -> None:
+        """Re-sync an Ad Forum channel"""
+        forums = await self.config.guild(ctx.guild).forums()
+        forum_id = str(forum.id)
+        if forum_id not in forums:
+            await ctx.send("The forum is not setup.")
+            return
+
+        async with ctx.typing():
+            await self._sync_forum(forum)
+
+        await ctx.send("The forum was synced.")
+
     ### listeners
     @commands.Cog.listener()
     async def on_thread_create(self, thread: discord.Thread) -> None:
@@ -112,7 +128,7 @@ class AdForum(commands.Cog):
         forums = await self.config.guild_from_id(payload.guild_id).forums()
         forum_id = str(payload.parent_id)
         if forum_id in forums:
-            if payload.thread:
+            if payload.thread and payload.thread.owner:
                 await payload.thread.owner.remove_roles(payload.thread.guild.get_role(forums[forum_id]), reason = "AdForum Thread deleted")
             else:
                 guild = self.bot.get_guild(payload.guild_id)
