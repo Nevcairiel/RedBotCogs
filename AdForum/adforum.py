@@ -142,6 +142,13 @@ class AdForum(commands.Cog):
     async def on_member_join(self, member: discord.Member) -> None:
         forums = await self.config.guild_from_id(member.guild.id).forums()
         for forum_id in forums:
+            role = member.guild.get_role(forums[forum_id])
             forum_channel = member.guild.get_channel(int(forum_id))
             if forum_channel:
-                await self._sync_forum(forum_channel)
+                for thread in forum_channel.threads:
+                    if thread.owner_id == member.id:
+                        await member.add_roles(role, reason = "AdForum Member Re-join")
+
+                async for thread in forum_channel.archived_threads(limit = None):
+                    if thread.owner_id == member.id:
+                        await member.add_roles(role, reason = "AdForum Member Re-join")
