@@ -323,6 +323,14 @@ class Tube(commands.Cog):
                 if (published > last_video_time and not video_id in history) or (
                     demo and published > last_video_time - datetime.timedelta(seconds=1)
                 ):
+                    if not video_id in cache.keys():
+                        cache[video_id] = self.get_video_details(video_id, api_key)
+                    video_details = cache.get(video_id)
+
+                    # skip upcoming live broadcasts
+                    if video_details and video_details["snippet"]["liveBroadcastContent"] == "upcoming":
+                        continue
+
                     video_link = f"https://www.youtube.com/watch?v={video_id}"
                     altered = True
                     subs[i]["previous"] = entry["snippet"]["publishedAt"]
@@ -391,6 +399,14 @@ class Tube(commands.Cog):
     def get_feed(self, playlist, api_key):
         youtube = googleapiclient.discovery.build('youtube', 'v3', developerKey=api_key, cache_discovery=False)
         return youtube.playlistItems().list(part='id,snippet', playlistId=playlist, maxResults=1).execute()
+
+    def get_video_details(self, video_id, api_key):
+        youtube = googleapiclient.discovery.build('youtube', 'v3', developerKey=api_key, cache_discovery=False)
+        items = youtube.videos().list(part='id,snippet,liveStreamingDetails', id=video_id).execute()
+        if items and (item_list := items.get("items")):
+            if len(item_list) == 1:
+                return item_list[0]
+        return None
 
     def get_upload_playlist(self, channel, api_key):
         youtube = googleapiclient.discovery.build('youtube', 'v3', developerKey=api_key, cache_discovery=False)
