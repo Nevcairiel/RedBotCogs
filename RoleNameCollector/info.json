@@ -1,0 +1,9 @@
+{
+    "author" : ["Nevcairiel"],
+    "install_msg" : "Start using the Cog with !rolenamecollector",
+    "name" : "RoleNameCollector",
+    "short" : "Collect the names of all people with a certain role, and write it to a file",
+    "description" : "Collect the names of all people with a certain role, and write it to a file",
+    "max_bot_version": "0.0.0",
+    "min_bot_version": "3.5.0"
+}
