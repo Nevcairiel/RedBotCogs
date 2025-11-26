@@ -134,8 +134,8 @@ class RoleNameCollector(commands.Cog, metaclass=CompositeMetaClass):
     async def on_member_update(self, before: discord.Member, after: discord.Member) -> None:
         guild = after.guild
 
-        was_member = self.user_whitelisted(before)
-        is_member = self.user_whitelisted(after)
+        was_member = await self.user_whitelisted(before)
+        is_member = await self.user_whitelisted(after)
 
         if was_member != is_member:
             await self.update_userlist(guild)
