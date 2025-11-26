@@ -48,15 +48,16 @@ class TwitchSchedule(commands.Cog):
         schedule = await self.get_json_schedule(channel)
         if schedule:
             async with ctx.typing():
-                await ctx.send("The next scheduled Twitch streams:")
+                message = "The next scheduled Twitch streams:"
                 for entry in schedule:
                     timestamp = iso8601.parse_date(entry["start_time"])
-                    message = f"<t:{int(timestamp.timestamp())}:f> - {entry['title']}"
+                    event_message = f"<t:{int(timestamp.timestamp())}:f> - {entry['title']}"
                     if "category" in entry and isinstance(entry["category"], dict):
-                        message = f"{message} - {entry['category']['name']}"
+                        event_message = f"{event_message} - {entry['category']['name']}"
                     if "canceled_until" in entry and entry["canceled_until"]:
-                        message = f"~~{message}~~ CANCELED"
-                    await ctx.send(message)
+                        event_message = f"~~{event_message}~~ CANCELED"
+                    message += "\n" + event_message
+                await ctx.send(message)
 
     @schedule.group()
     @commands.admin()
