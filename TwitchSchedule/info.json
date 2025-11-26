@@ -1,0 +1,12 @@
+{
+    "author" : ["nevcairiel"],
+    "install_msg" : "You've just installed the TwitchSchedule cog!",
+    "name" : "TwitchSchedule",
+    "short" : "Show the twitch schedule of a designated channel on request",
+    "description" : "Allow users to request the most recent entries of a Twitch channels schedule",
+    "required_cogs": {},
+    "requirements": [ "requests", "iso8601" ],
+    "min_bot_version": "3.5.0",
+    "tags": [],
+    "type": "COG"
+}
