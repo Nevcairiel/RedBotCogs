@@ -106,7 +106,7 @@ class Tube(commands.Cog):
         feed = self.get_feed(newSub["playlistId"], api_key)
         last_video = feed["items"][0]
         if last_video and last_video["snippet"]["publishedAt"]:
-            newSub["previous"] =  dateutil.parser.isoparse(last_video["snippet"]["publishedAt"])
+            newSub["previous"] = last_video["snippet"]["publishedAt"]
             newSub["name"] = html.unescape(last_video["snippet"]["channelTitle"])
         subs.append(newSub)
         await self.conf.guild(ctx.guild).subscriptions.set(subs)
