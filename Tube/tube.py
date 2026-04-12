@@ -103,7 +103,7 @@ class Tube(commands.Cog):
             if sub["uid"] == newSub["uid"]:
                 await ctx.send("This subscription already exists!")
                 return
-        feed = self.get_feed(newSub["id"], api_key)
+        feed = self.get_feed(newSub["playlistId"], api_key)
         last_video = feed["items"][0]
         if last_video and last_video["snippet"]["publishedAt"]:
             newSub["previous"] =  dateutil.parser.isoparse(last_video["snippet"]["publishedAt"])
