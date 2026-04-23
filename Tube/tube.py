@@ -339,6 +339,8 @@ class Tube(commands.Cog):
                     # skip short videos
                     dur = isodate.parse_duration(video_details["contentDetails"]["duration"])
                     if dur.total_seconds() <= min_video_length:
+                        altered = True
+                        new_history.append(video_id) #skip forever
                         continue
 
                     video_link = f"https://www.youtube.com/watch?v={video_id}"
