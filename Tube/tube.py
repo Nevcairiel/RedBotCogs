@@ -6,6 +6,7 @@ import html
 import logging
 import re
 import time
+import isodate
 from random import randint
 from typing import Optional
 
@@ -40,7 +41,7 @@ class Tube(commands.Cog):
     def __init__(self, bot: bot.Red):
         self.bot = bot
         self.conf = Config.get_conf(self, identifier=UNIQUE_ID, force_registration=True)
-        self.conf.register_guild(subscriptions=[], cache=[], api_key="")
+        self.conf.register_guild(subscriptions=[], cache=[], api_key="", min_video_length=180)
         self.conf.register_global(interval=300, cache_size=500)
         self.background_get_new_videos.start()
 
@@ -286,6 +287,7 @@ class Tube(commands.Cog):
             subs = await self.conf.guild(guild).subscriptions()
             history = await self.conf.guild(guild).cache()
             api_key = await self.conf.guild(guild).api_key()
+            min_video_length = await self.conf.guild(guild).min_video_length()
             if not api_key:
                 log.warning(f"YouTube API key not set")
                 return
@@ -327,13 +329,22 @@ class Tube(commands.Cog):
                         cache[video_id] = self.get_video_details(video_id, api_key)
                     video_details = cache.get(video_id)
 
+                    if not video_details:
+                        continue
+
                     # skip upcoming live broadcasts
-                    if video_details and video_details["snippet"]["liveBroadcastContent"] == "upcoming":
+                    if video_details["snippet"]["liveBroadcastContent"] == "upcoming":
+                        continue
+
+                    # skip short videos
+                    dur = isodate.parse_duration(video_details["contentDetails"]["duration"])
+                    if dur.total_seconds() <= min_video_length:
                         continue
 
                     video_link = f"https://www.youtube.com/watch?v={video_id}"
                     altered = True
                     subs[i]["previous"] = entry["snippet"]["publishedAt"]
+                    last_video_time = published
                     new_history.append(video_id)
                     # Build custom description if one is set
                     custom = sub.get("custom", False)
@@ -398,11 +409,11 @@ class Tube(commands.Cog):
 
     def get_feed(self, playlist, api_key):
         youtube = googleapiclient.discovery.build('youtube', 'v3', developerKey=api_key, cache_discovery=False)
-        return youtube.playlistItems().list(part='id,snippet', playlistId=playlist, maxResults=1).execute()
+        return youtube.playlistItems().list(part='id,snippet', playlistId=playlist, maxResults=2).execute()
 
     def get_video_details(self, video_id, api_key):
         youtube = googleapiclient.discovery.build('youtube', 'v3', developerKey=api_key, cache_discovery=False)
-        items = youtube.videos().list(part='id,snippet,liveStreamingDetails', id=video_id).execute()
+        items = youtube.videos().list(part='id,snippet,liveStreamingDetails,contentDetails', id=video_id).execute()
         if items and (item_list := items.get("items")):
             if len(item_list) == 1:
                 return item_list[0]
